@@ -1,9 +1,10 @@
+import matplotlib.pyplot as plt
 import numpy as np
 
 class ag():
 	''' Propiedades estaticas'''
 	''' Metodos '''
-	def __init__(self,nG=20,nI=20,pM=0.1,pC=0.8,nGs=2,dF=10):
+	def __init__(self,nG=20,nI=20,pM=0.1,pC=0.8,nGs=2,dF=10,func = 0):
 		self.numGeneraciones = nG
 		self.numIndividuos   = nI
 		self.probMut         = pM
@@ -11,8 +12,29 @@ class ag():
 		self.numGenes        = nGs
 		self.domFunc         = dF
 		self.prec            = 8
+		self.funcObj_p       = func
 		self.mejorElemento   = 0
 		self.valorMejorElemento = 0;
+		''' Variables para los graficos '''
+		self.mejoresElementos = np.zeros((nG))
+		self.off_line         = np.zeros((nG))
+		self.on_line          = np.zeros((nG))
+		self.sum_offLine      = 0
+		self.sum_onLine       = 0
+		self.axesX            = np.arange(1,nG+1,1)
+	
+	def curvas(self):
+		plt.figure(3)
+		plt.subplot(2,2,2)
+		plt.plot(self.axesX,self.mejoresElementos,'-')
+		plt.title('Mejores elementos')
+		plt.subplot(2,2,3)
+		p = plt.plot(self.axesX,self.off_line,'--',label = "Off-line")
+		plt.title('off-line')
+		plt.subplot(2,2,4)
+		plt.plot(self.axesX,self.on_line,'-.',label = "on-line")
+		plt.title('on-line')
+		plt.show()
 
 	def getMejorElemento(self):
 		return self.mejorElemento
@@ -22,17 +44,22 @@ class ag():
 
 	def run(self):
 		poblacion = self.rand()
-		result = self.funcObj(poblacion)
+		result = self.funcObj_p(poblacion)
 		fitness = 1/(result)
 		iter = 0
 		while iter < self.numGeneraciones:
-			print(result)
 			poblacion = self.operadores(poblacion,fitness)
-			result = self.funcObj(poblacion)
+			result = self.funcObj_p(poblacion)
 			fitness = 1/(result)
+			''' Datos de los graficos '''
+			self.mejoresElementos[iter] = np.amax(fitness)
+			self.sum_offLine            = self.sum_offLine + np.amin(result)
+			self.sum_onLine             = self.sum_onLine  + np.mean(result)
+			self.off_line[iter]         = self.sum_offLine/(iter+1)
+			self.on_line[iter]          = self.sum_onLine/(iter+1)
 			iter = iter + 1 
 		self.mejorElemento = poblacion[np.argmax(fitness),:]
-		self.valorMejorElemento = self.funcObj(poblacion)
+		self.valorMejorElemento = np.amin(result)
 
 	def rand(self):
 		result = (((2*self.domFunc)*np.random.rand(self.numIndividuos,self.numGenes))-self.domFunc)#.reshape(-1,2)
@@ -86,7 +113,6 @@ class ag():
 			hijos[(i*2)+1,:] = poblacion[iMadre,:]
 			pCross = np.random.rand()
 			if pCross < self.probCross:
-				print("cruzando")
 				posicionCross = np.random.randint(self.numGenes * 32)
 				iVar = 0
 				lMed = (posicionCross+1)//32
@@ -107,7 +133,6 @@ class ag():
 					iVar += 1
 			pMut = np.random.rand()
 			if pMut < self.probMut :
-				print("mutando")
 				posicionMut = np.random.randint(self.numGenes * 32)
 				iVar = posicionMut//32
 				mod  = posicionMut%32
